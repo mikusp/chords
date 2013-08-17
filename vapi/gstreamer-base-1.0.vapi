@@ -30,8 +30,8 @@ namespace Gst {
 			public Gst.ClockTime prev_pts (out uint64 distance);
 			[CCode (cname = "gst_adapter_push")]
 			public void push (owned Gst.Buffer buf);
-			[CCode (array_length_pos = 0.1, array_length_type = "gsize", cname = "gst_adapter_take")]
-			public uint8[] take ();
+			[CCode (array_length = "false", cname = "gst_adapter_take")]
+			public uint8[] take (size_t nbytes);
 			[CCode (cname = "gst_adapter_take_buffer")]
 			public Gst.Buffer take_buffer (size_t nbytes);
 			[CCode (cname = "gst_adapter_take_list")]
@@ -81,13 +81,14 @@ namespace Gst {
 			[CCode (cname = "gst_bit_reader_skip_to_byte")]
 			public bool skip_to_byte ();
 		}
-		[CCode (cheader_filename = "gst/base/gstadapter.h,gst/base/gstbaseparse.h,gst/base/gstbasesink.h,gst/base/gstbasesrc.h,gst/base/gstbasetransform.h,gst/base/gstbitreader.h,gst/base/gstbytereader.h,gst/base/gstbytewriter.h,gst/base/gstcollectpads.h,gst/base/gstpushsrc.h,gst/base/gsttypefindhelper.h", cname = "GstBitReader")]
+		[CCode (cheader_filename = "gst/base/gstadapter.h,gst/base/gstbaseparse.h,gst/base/gstbasesink.h,gst/base/gstbasesrc.h,gst/base/gstbasetransform.h,gst/base/gstbitreader.h,gst/base/gstbytereader.h,gst/base/gstbytewriter.h,gst/base/gstcollectpads.h,gst/base/gstpushsrc.h,gst/base/gsttypefindhelper.h", cname = "GstByteReader", free_function = "gst_byte_reader_free")]
 		[Compact]
 		[GIR (name = "ByteReader")]
 		public class ByteReader {
 			public uint byte;
 			[CCode (array_length = false, array_null_terminated = true)]
 			public weak uint8[] data;
+			[CCode (cname = "gst_byte_reader_new", has_construct_function = false)]
 			public ByteReader ([CCode (array_length_type = "guint")] uint8[] data);
 			[CCode (cname = "gst_byte_reader_dup_data")]
 			public bool dup_data ([CCode (array_length_cname = "size", array_length_pos = 0.5, array_length_type = "guint")] out uint8[] val);
