@@ -4,6 +4,7 @@ using Gst;
 public class Chords : Gtk.Application {
     private AudioManager am;
     private Builder builder;
+    private float[] rawAudio;
 
     private Scale slider;
 
@@ -95,7 +96,7 @@ public class Chords : Gtk.Application {
     }
 
     public void openFile() {
-        var fc = new Gtk.FileChooserDialog("Open music file", (Gtk.Window)builder.get_object("window1"), Gtk.FileChooserAction.OPEN,
+        var fc = new Gtk.FileChooserDialog("Open music file", (Gtk.Window)builder.get_object("window"), Gtk.FileChooserAction.OPEN,
             Gtk.Stock.CANCEL, Gtk.ResponseType.CANCEL,
             Gtk.Stock.OPEN, Gtk.ResponseType.ACCEPT);
 
@@ -105,6 +106,8 @@ public class Chords : Gtk.Application {
 
         if (fc.run() == Gtk.ResponseType.ACCEPT) {
             am.setFileName(fc.get_filename());
+            var fs = new FileSource(fc.get_filename());
+            this.rawAudio = fs.get_f32_le();
         }
         fc.close();
     }
