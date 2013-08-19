@@ -57,16 +57,16 @@ public class FileSource : GLib.Object {
         loop.run();
     }
 
-    public float[] get_f32_le() {
+    public float[,] get_f32_le() {
         var length = this.adapter.available();
-        float[] result = {};
+        float[,] result = new float[2,length / 4];
         var data = this.adapter.take(length);
         var br = new Gst.Base.ByteReader(data);
 
         for (int i = 0; i < length / 4; ++i) {
             float temp;
             br.get_float32_le(out temp);
-            result += temp;
+            result[i%2, i] = temp;
         }
 
         return result;

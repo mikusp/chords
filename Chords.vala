@@ -4,7 +4,7 @@ using Gst;
 public class Chords : Gtk.Application {
     private AudioManager am;
     private Builder builder;
-    private float[] rawAudio;
+    private float[,] rawAudio;
 
     private Scale slider;
 
