@@ -301,31 +301,6 @@
           </packing>
         </child>
         <child>
-          <object class="GtkDrawingArea" id="waveformArea">
-            <property name="height_request">130</property>
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-          </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkScale" id="slider">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="round_digits">1</property>
-            <property name="draw_value">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">3</property>
-          </packing>
-        </child>
-        <child>
           <object class="GtkToolbar" id="lowerToolbar">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -518,8 +493,26 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">4</property>
+            <property name="pack_type">end</property>
+            <property name="position">2</property>
           </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="slider">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="round_digits">1</property>
+            <property name="draw_value">False</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="pack_type">end</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
         </child>
       </object>
     </child>

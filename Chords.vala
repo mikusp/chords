@@ -6,9 +6,7 @@ using Gst;
 public class Chords : Gtk.Application {
     private AudioManager am;
     private Builder builder;
-    private float[,] rawAudio;
-    private DrawingArea waveformArea;
-    private int pointsPerPixel {get; set; default = 1000;}
+    private WaveformWidget waveformArea;
 
     private Scale slider;
 
@@ -92,60 +90,16 @@ public class Chords : Gtk.Application {
         pitchSlider.set_adjustment(new Adjustment(0.0, -12.0, 13.0, 1.0, 1.0, 1.0));
         pitchSlider.value_changed.connect(this.pitchChanged);
 
-        waveformArea = builder.get_object("waveformArea") as DrawingArea;
-        waveformArea.draw.connect(this.renderWaveform);
-        waveformArea.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
-            EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK);
-        waveformArea.event.connect(this.waveformEventHandler);
+        waveformArea = new WaveformWidget();
+        var box = builder.get_object("box1") as Gtk.Box;
+        box.pack_start(waveformArea);
+        waveformArea.show();
 
         Timeout.add(50, this.refreshUI);
     }
 
-    private bool waveformEventHandler(Gdk.Event e) {
-        return false;
-    }
-
-    private bool renderWaveform(Cairo.Context c) {
-        var maxPeakHeight = waveformArea.get_allocated_height() / 2.0;
-        var verticalMiddle = maxPeakHeight;
-
-        c.set_line_width(1.0);
-        c.set_source_rgb(0.0, 0.0, 1.0);
-
-        if (rawAudio.length[0] > 0) {
-            for (int i = 0; i < waveformArea.get_allocated_width(); ++i) {
-                var negativePeak = 0.0;
-                var positivePeak = 0.0;
-
-                for (int j = 0; j < pointsPerPixel; ++j) {
-                    if (i * pointsPerPixel + j > rawAudio.length[1])
-                        break;
-
-                    if (rawAudio[0,i * pointsPerPixel + j] < negativePeak)
-                        negativePeak = rawAudio[0, i * pointsPerPixel + j];
-                    if (rawAudio[0, i * pointsPerPixel + j] > positivePeak)
-                        positivePeak = rawAudio[0, i * pointsPerPixel + j];
-                }
-
-                c.move_to(i + 0.5, verticalMiddle);
-                c.line_to(i + 0.5, verticalMiddle - maxPeakHeight * negativePeak);
-                c.stroke();
-                c.move_to(i + 0.5, verticalMiddle);
-                c.line_to(i + 0.5, verticalMiddle - maxPeakHeight * positivePeak);
-                c.stroke();
-            }
-        }
-
-        c.set_source_rgb(0.0, 0.0, 0.0);
-        c.move_to(0, verticalMiddle);
-        c.line_to(waveformArea.get_allocated_width(), verticalMiddle);
-        c.stroke();
-
-        return false;
-    }
-
     private void zoomChanged(double val) {
-        this.pointsPerPixel = (int)val;
+        waveformArea.pointsPerPixel = (int)val;
         waveformArea.queue_draw();
     }
 
@@ -173,7 +127,7 @@ public class Chords : Gtk.Application {
         if (fc.run() == Gtk.ResponseType.ACCEPT) {
             am.setFileName(fc.get_filename());
             var fs = new FileSource(fc.get_filename());
-            this.rawAudio = fs.get_f32_le();
+            this.waveformArea.audioData = fs.get_f32_le();
             waveformArea.queue_draw();
         }
         fc.close();
