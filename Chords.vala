@@ -53,23 +53,28 @@ public class Chords : Gtk.Application {
 
         (builder.get_object("openFileMenuItem") as ImageMenuItem).
             activate.connect(this.openFile);
+        (builder.get_object("openButton") as Button).clicked.connect(this.openFile);
 
         var volumeSlider = builder.get_object("volumeSlider") as Gtk.Scale;
         volumeSlider.value_changed.connect(this.volumeChanged);
         volumeSlider.set_range(0, 1);
         volumeSlider.set_value(0.5);
 
+        // has to be before zoomSlider.set_value
+        // and not in a constructor - GTK is not yet inited there
+        waveformArea = new WaveformWidget();
+        (builder.get_object("viewport") as Gtk.Viewport).add(waveformArea);
+        waveformArea.show();
+
         var zoomSlider = builder.get_object("zoomSlider") as Scale;
         zoomSlider.value_changed.connect(() => {
             this.zoomChanged(zoomSlider.get_value());
         });
-        zoomSlider.set_range(0, 12);
-        zoomSlider.set_value(0);
+        zoomSlider.set_range(0, 10);
+        zoomSlider.set_value(5);
         zoomSlider.set_inverted(true);
 
         slider = builder.get_object("slider") as Scale;
-
-        (builder.get_object("openButton") as Button).clicked.connect(this.openFile);
 
         (builder.get_object("playButton") as Button).clicked.connect(am.play);
 
@@ -90,10 +95,8 @@ public class Chords : Gtk.Application {
         pitchSlider.set_adjustment(new Adjustment(0.0, -12.0, 13.0, 1.0, 1.0, 1.0));
         pitchSlider.value_changed.connect(this.pitchChanged);
 
-        waveformArea = new WaveformWidget();
-        var box = builder.get_object("box1") as Gtk.Box;
-        box.pack_start(waveformArea);
-        waveformArea.show();
+        var scrolledwindow = builder.get_object("scrolledwindow") as Gtk.ScrolledWindow;
+        scrolledwindow.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
 
         Timeout.add(50, this.refreshUI);
     }
