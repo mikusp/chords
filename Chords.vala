@@ -60,12 +60,12 @@ public class Chords : Gtk.Application {
         volumeSlider.set_value(0.5);
 
         var zoomSlider = builder.get_object("zoomSlider") as Scale;
-        zoomSlider.button_release_event.connect(() => {
+        zoomSlider.value_changed.connect(() => {
             this.zoomChanged(zoomSlider.get_value());
-            return false;
         });
-        zoomSlider.set_range(100, 25000);
-        zoomSlider.set_value(1000);
+        zoomSlider.set_range(0, 12);
+        zoomSlider.set_value(0);
+        zoomSlider.set_inverted(true);
 
         slider = builder.get_object("slider") as Scale;
 
@@ -99,7 +99,7 @@ public class Chords : Gtk.Application {
     }
 
     private void zoomChanged(double val) {
-        waveformArea.pointsPerPixel = (int)val;
+        waveformArea.zoom = val;
         waveformArea.queue_draw();
     }
 

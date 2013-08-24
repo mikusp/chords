@@ -1,62 +1,60 @@
 using Cairo;
 using Gdk;
-using Gdk;
 
 public class WaveformWidget : Gtk.DrawingArea {
-    public float[,] audioData {private get; owned set;}
-    public int pointsPerPixel {get; set; default = 1000;}
-    private Gee.HashMap<int, ArrayWrapper> peaksCache;
+    public float[,] audioData {
+        set {
+            var i = 0;
+            var end = false;
+            while (!end) {
+                var peak = 0.0f;
+                for (var j = i * samplesPerPixel; j < (i+1) * samplesPerPixel; ++j) {
+                    if (value.length[1] == j) {
+                        end = true;
+                        break;
+                    }
 
-    private class ArrayWrapper : GLib.Object {
-        public GLib.Array<float?> negatives;
-        public GLib.Array<float?> positives;
-        public uint length {
-            get {
-                return negatives.length;
+                    if (value[0, j] > peak)
+                        peak = value[0, j];
+                }
+                peaks.insert_val(i, peak);
+                ++i;
             }
-            set {
-                negatives.set_size(value);
-                positives.set_size(value);
-            }
-        }
-        public ArrayWrapper() {
-            negatives = new GLib.Array<float?>();
-            positives = new GLib.Array<float?>();
         }
     }
+    public double zoom {get; set; default = 0;}
+    private int samplesPerPixel {get; set; default = 80;}
+    private GLib.Array<float?> peaks;
 
     public WaveformWidget() {
-        this.peaksCache = new Gee.HashMap<int, ArrayWrapper>();
+        this.peaks = new GLib.Array<float?>();
         this.draw.connect(this.renderWaveform);
         this.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
             EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK);
     }
 
     private bool renderWaveform(Cairo.Context c) {
-        if (audioData.length[0] == 0)
+        if (peaks.length == 0)
             return false;
-
-        if (peaksCache.has_key(pointsPerPixel)) {
-            if (peaksCache.get(pointsPerPixel).length < this.get_allocated_width()) {
-                this.partialPopulateCache();
-            }
-        }
-        else {
-            this.populateCache();
-        }
-
-        // now cache definitely has needed values
 
         var maxPeakHeight = this.get_allocated_height() / 2.0;
         var verticalMiddle = maxPeakHeight;
-        var peaks = peaksCache.get(pointsPerPixel);
 
         c.set_line_width(1.0);
         c.set_source_rgb(0.0, 0.0, 1.0);
 
+        var peaksLength = peaks.length;
+        var sspZoom = Math.pow(2, this.zoom);
+
         for (int i = 0; i < this.get_allocated_width(); ++i) {
-            c.move_to(i + 0.5, verticalMiddle - peaks.negatives.index(i) * maxPeakHeight);
-            c.line_to(i + 0.5, verticalMiddle - peaks.positives.index(i) * maxPeakHeight);
+            var maxFromRange = 0.0f;
+            for (int j = (int)(sspZoom * i); j < (int)(sspZoom * (i+1)) && j < peaksLength; j++) {
+                if (peaks.index(j) > maxFromRange)
+                    maxFromRange = peaks.index(j);
+            }
+
+            c.move_to(i + 0.5, verticalMiddle - maxFromRange * maxPeakHeight);
+            c.line_to(i + 0.5, verticalMiddle + maxFromRange * maxPeakHeight);
             c.stroke();
         }
 
@@ -68,50 +66,4 @@ public class WaveformWidget : Gtk.DrawingArea {
         return false;
     }
 
-    private void populateCache() {
-        var wrapper = new ArrayWrapper();
-
-        for (uint i = 0; i < this.get_allocated_width(); ++i) {
-            var negativePeak = 0.0;
-            var positivePeak = 0.0;
-
-            for (int j = 0; j < pointsPerPixel; ++j) {
-                if (i * pointsPerPixel + j > audioData.length[1])
-                    break;
-
-                if (audioData[0,i * pointsPerPixel + j] < negativePeak)
-                    negativePeak = audioData[0, i * pointsPerPixel + j];
-                if (audioData[0, i * pointsPerPixel + j] > positivePeak)
-                    positivePeak = audioData[0, i * pointsPerPixel + j];
-            }
-
-            wrapper.negatives.append_val((float)negativePeak);
-            wrapper.positives.append_val((float)positivePeak);
-        }
-
-        peaksCache.set(pointsPerPixel, wrapper);
-    }
-
-    private void partialPopulateCache() {
-        var wrapper = peaksCache.get(pointsPerPixel);
-        var from = wrapper.length;
-
-        for (uint i = from; i < this.get_allocated_width(); ++i) {
-            var negativePeak = 0.0;
-            var positivePeak = 0.0;
-
-            for (int j = 0; j < pointsPerPixel; ++j) {
-                if (i * pointsPerPixel + j > audioData.length[1])
-                    break;
-
-                if (audioData[0,i * pointsPerPixel + j] < negativePeak)
-                    negativePeak = audioData[0, i * pointsPerPixel + j];
-                if (audioData[0, i * pointsPerPixel + j] > positivePeak)
-                    positivePeak = audioData[0, i * pointsPerPixel + j];
-            }
-
-            wrapper.negatives.append_val((float)negativePeak);
-            wrapper.positives.append_val((float)positivePeak);
-        }
-    }
 }
