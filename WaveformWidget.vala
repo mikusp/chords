@@ -24,7 +24,6 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
     }
     public double zoom {get; set; default = 0;}
-    // TODO zooming should not move the position of a waveform
     private int samplesPerPixel {get; set; default = 80;}
     private GLib.Array<float?> peaks;
 

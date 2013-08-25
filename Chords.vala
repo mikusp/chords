@@ -95,15 +95,24 @@ public class Chords : Gtk.Application {
         pitchSlider.set_adjustment(new Adjustment(0.0, -12.0, 13.0, 1.0, 1.0, 1.0));
         pitchSlider.value_changed.connect(this.pitchChanged);
 
-        var scrolledwindow = builder.get_object("scrolledwindow") as Gtk.ScrolledWindow;
-        scrolledwindow.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-
         Timeout.add(50, this.refreshUI);
     }
 
+    // majority of this method should be placed in WaveformWidget
     private void zoomChanged(double val) {
+        var scrolledwindow = builder.get_object("scrolledwindow") as Gtk.ScrolledWindow;
+        var scrollbar = scrolledwindow.get_hscrollbar() as Gtk.Scrollbar;
+        int oldWidth, newWidth;
+        waveformArea.get_size_request(out oldWidth, null);
+        var coeff = (scrollbar.get_value() + scrolledwindow.get_allocated_width() / 2.0) / (oldWidth);
+
         waveformArea.zoom = val;
         waveformArea.queue_draw();
+        waveformArea.get_size_request(out newWidth, null);
+
+        // stick to the beginning
+        if (scrollbar.get_value() != 0)
+            scrollbar.set_value(coeff * newWidth - scrolledwindow.get_allocated_width() / 2.0);
     }
 
     private void volumeChanged(Range range) {
