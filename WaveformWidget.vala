@@ -53,6 +53,10 @@ public class WaveformWidget : Gtk.DrawingArea {
             if (this.get_window().get_cursor() != null) {
                 if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_H_DOUBLE_ARROW)
                     this.move = true;
+                else if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_LEFT_ARROW)
+                    this.leftExpand = true;
+                else if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_RIGHT_ARROW)
+                    this.rightExpand = true;
             }
             else
                 this.click = true;
@@ -66,6 +70,8 @@ public class WaveformWidget : Gtk.DrawingArea {
             }
             this.click = false;
             this.move = false;
+            this.leftExpand = false;
+            this.rightExpand = false;
             break;
         }
         case Gdk.EventType.MOTION_NOTIFY: {
@@ -75,6 +81,21 @@ public class WaveformWidget : Gtk.DrawingArea {
                 var distance = Math.llrint(e.motion.x - this.lastPointerPos);
                 var diff = pixelToPeakIndex(distance);
                 this.startingSample += diff;
+                this.endingSample += diff;
+            }
+
+            if (this.leftExpand) {
+                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
+                var diff = pixelToPeakIndex(distance);
+                this.startingSample += diff;
+            }
+
+            // TODO ensure that startingSample < endingSample
+            // particularly while expanding
+
+            if (this.rightExpand) {
+                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
+                var diff = pixelToPeakIndex(distance);
                 this.endingSample += diff;
             }
 
@@ -103,15 +124,15 @@ public class WaveformWidget : Gtk.DrawingArea {
     private void setDirectionalCursor(double x) {
         Cursor c = null;
 
-        if (this.selection) {
-            if (Math.fabs(x - peakIndexToPixel(this.startingSample)) <= 8) {
+        if (this.selection || this.move || this.leftExpand || this.rightExpand) {
+            if (Math.fabs(x - peakIndexToPixel(this.startingSample)) <= 8 || this.leftExpand) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_LEFT_ARROW);
             }
-            else if (Math.fabs(x - peakIndexToPixel(this.endingSample)) <= 8) {
+            else if (Math.fabs(x - peakIndexToPixel(this.endingSample)) <= 8 || this.rightExpand) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_RIGHT_ARROW);
             }
-            else if (peakIndexToPixel(this.startingSample) < x &&
-                x < peakIndexToPixel(this.endingSample)) {
+            else if ((peakIndexToPixel(this.startingSample) < x &&
+                x < peakIndexToPixel(this.endingSample)) || this.rightExpand) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_H_DOUBLE_ARROW);
             }
 
