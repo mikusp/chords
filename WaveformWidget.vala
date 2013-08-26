@@ -26,15 +26,21 @@ public class WaveformWidget : Gtk.DrawingArea {
     public double zoom {get; set; default = 0;}
     private int samplesPerPixel {get; set; default = 80;}
     private GLib.Array<float?> peaks;
+    private State selectionState {get; set; default = State.NONE;}
     private bool selection {get; set; default = false;}
-    private bool click {get; set; default = false;}
-    private bool move {get; set; default = false;}
-    private bool leftExpand {get; set; default = false;}
-    private bool rightExpand {get; set; default = false;}
     private double clickPosition {get; set; default = 0.0;}
     private double lastPointerPos {get; set;}
     private int startingSample {get; set;}
     private int endingSample {get; set;}
+
+    private enum State {
+        NONE,
+        SELECT,
+        MOVE,
+        LEFT_EXPAND,
+        RIGHT_EXPAND,
+        SELECTED
+    }
 
     public WaveformWidget() {
         this.peaks = new GLib.Array<float?>();
@@ -52,14 +58,14 @@ public class WaveformWidget : Gtk.DrawingArea {
         case Gdk.EventType.BUTTON_PRESS: {
             if (this.get_window().get_cursor() != null) {
                 if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_H_DOUBLE_ARROW)
-                    this.move = true;
+                    this.selectionState = State.MOVE;
                 else if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_LEFT_ARROW)
-                    this.leftExpand = true;
+                    this.selectionState = State.LEFT_EXPAND;
                 else if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_RIGHT_ARROW)
-                    this.rightExpand = true;
+                    this.selectionState = State.RIGHT_EXPAND;
             }
             else
-                this.click = true;
+                this.selectionState = State.SELECT;
 
             this.clickPosition = e.button.x;
             break;
@@ -68,49 +74,49 @@ public class WaveformWidget : Gtk.DrawingArea {
             if (Math.fabs(e.button.x - this.clickPosition) <= 2) {
                 this.selection = false;
             }
-            this.click = false;
-            this.move = false;
-            this.leftExpand = false;
-            this.rightExpand = false;
+            this.selectionState = State.NONE;
             break;
         }
         case Gdk.EventType.MOTION_NOTIFY: {
             setDirectionalCursor(e.motion.x);
 
-            if (this.move) {
-                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
-                var diff = pixelToPeakIndex(distance);
+            var distance = Math.llrint(e.motion.x - this.lastPointerPos);
+            var diff = pixelToPeakIndex(distance);
+
+            switch (this.selectionState) {
+            case State.MOVE: {
                 this.startingSample += diff;
                 this.endingSample += diff;
+                break;
             }
-
-            if (this.leftExpand) {
-                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
-                var diff = pixelToPeakIndex(distance);
+            case State.LEFT_EXPAND: {
                 this.startingSample += diff;
+                break;
+            }
+            case State.RIGHT_EXPAND: {
+                this.endingSample += diff;
+                break;
+            }
+            case State.SELECT: {
+                if (Math.fabs(e.motion.x - this.clickPosition) >= 5) {
+                    this.selection = true;
+
+                    if (e.motion.x > this.clickPosition) {
+                        this.startingSample = pixelToPeakIndex(this.clickPosition);
+                        this.endingSample = pixelToPeakIndex(e.motion.x);
+                    }
+                    else {
+                        this.startingSample = pixelToPeakIndex(e.motion.x);
+                        this.endingSample = pixelToPeakIndex(this.clickPosition);
+                    }
+                }
+                break;
+            }
             }
 
             // TODO ensure that startingSample < endingSample
             // particularly while expanding
 
-            if (this.rightExpand) {
-                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
-                var diff = pixelToPeakIndex(distance);
-                this.endingSample += diff;
-            }
-
-            if (this.click && Math.fabs(e.motion.x - this.clickPosition) >= 5) {
-                this.selection = true;
-
-                if (e.motion.x > this.clickPosition) {
-                    this.startingSample = pixelToPeakIndex(this.clickPosition);
-                    this.endingSample = pixelToPeakIndex(e.motion.x);
-                }
-                else {
-                    this.startingSample = pixelToPeakIndex(e.motion.x);
-                    this.endingSample = pixelToPeakIndex(this.clickPosition);
-                }
-            }
             this.lastPointerPos = e.motion.x;
             break;
         }
@@ -124,15 +130,18 @@ public class WaveformWidget : Gtk.DrawingArea {
     private void setDirectionalCursor(double x) {
         Cursor c = null;
 
-        if (this.selection || this.move || this.leftExpand || this.rightExpand) {
-            if (Math.fabs(x - peakIndexToPixel(this.startingSample)) <= 8 || this.leftExpand) {
+        if (this.selection || this.selectionState != State.NONE) {
+            if (Math.fabs(x - peakIndexToPixel(this.startingSample)) <= 8 ||
+                this.selectionState == State.LEFT_EXPAND) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_LEFT_ARROW);
             }
-            else if (Math.fabs(x - peakIndexToPixel(this.endingSample)) <= 8 || this.rightExpand) {
+            else if (Math.fabs(x - peakIndexToPixel(this.endingSample)) <= 8 ||
+                this.selectionState == State.RIGHT_EXPAND) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_RIGHT_ARROW);
             }
             else if ((peakIndexToPixel(this.startingSample) < x &&
-                x < peakIndexToPixel(this.endingSample)) || this.rightExpand) {
+                x < peakIndexToPixel(this.endingSample)) ||
+                this.selectionState == State.MOVE) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_H_DOUBLE_ARROW);
             }
 
