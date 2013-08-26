@@ -26,13 +26,99 @@ public class WaveformWidget : Gtk.DrawingArea {
     public double zoom {get; set; default = 0;}
     private int samplesPerPixel {get; set; default = 80;}
     private GLib.Array<float?> peaks;
+    private bool selection {get; set; default = false;}
+    private bool click {get; set; default = false;}
+    private bool move {get; set; default = false;}
+    private bool leftExpand {get; set; default = false;}
+    private bool rightExpand {get; set; default = false;}
+    private double clickPosition {get; set; default = 0.0;}
+    private double lastPointerPos {get; set;}
+    private int startingSample {get; set;}
+    private int endingSample {get; set;}
 
     public WaveformWidget() {
         this.peaks = new GLib.Array<float?>();
         this.draw.connect(this.renderWaveform);
         this.notify["zoom"].connect(this.setSizeRequest);
         this.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
-            EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK);
+            EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK |
+            EventMask.POINTER_MOTION_HINT_MASK |
+            EventMask.POINTER_MOTION_MASK);
+        this.event.connect(this.eventHandler);
+    }
+
+    private bool eventHandler(Gdk.Event e) {
+        switch (e.type) {
+        case Gdk.EventType.BUTTON_PRESS: {
+            if (this.get_window().get_cursor() != null) {
+                if (this.get_window().get_cursor().cursor_type == Gdk.CursorType.SB_H_DOUBLE_ARROW)
+                    this.move = true;
+            }
+            else
+                this.click = true;
+
+            this.clickPosition = e.button.x;
+            break;
+        }
+        case Gdk.EventType.BUTTON_RELEASE: {
+            if (Math.fabs(e.button.x - this.clickPosition) <= 2) {
+                this.selection = false;
+            }
+            this.click = false;
+            this.move = false;
+            break;
+        }
+        case Gdk.EventType.MOTION_NOTIFY: {
+            setDirectionalCursor(e.motion.x);
+
+            if (this.move) {
+                var distance = Math.llrint(e.motion.x - this.lastPointerPos);
+                var diff = pixelToPeakIndex(distance);
+                this.startingSample += diff;
+                this.endingSample += diff;
+            }
+
+            if (this.click && Math.fabs(e.motion.x - this.clickPosition) >= 5) {
+                this.selection = true;
+
+                if (e.motion.x > this.clickPosition) {
+                    this.startingSample = pixelToPeakIndex(this.clickPosition);
+                    this.endingSample = pixelToPeakIndex(e.motion.x);
+                }
+                else {
+                    this.startingSample = pixelToPeakIndex(e.motion.x);
+                    this.endingSample = pixelToPeakIndex(this.clickPosition);
+                }
+            }
+            this.lastPointerPos = e.motion.x;
+            break;
+        }
+        default:
+            break;
+        }
+        this.queue_draw();
+        return false;
+    }
+
+    private void setDirectionalCursor(double x) {
+        Cursor c = null;
+
+        if (this.selection) {
+            if (Math.fabs(x - peakIndexToPixel(this.startingSample)) <= 8) {
+                c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_LEFT_ARROW);
+            }
+            else if (Math.fabs(x - peakIndexToPixel(this.endingSample)) <= 8) {
+                c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_RIGHT_ARROW);
+            }
+            else if (peakIndexToPixel(this.startingSample) < x &&
+                x < peakIndexToPixel(this.endingSample)) {
+                c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_H_DOUBLE_ARROW);
+            }
+
+        }
+
+        if (this.get_window().get_cursor() != c)
+            this.get_window().set_cursor(c);
     }
 
     private bool renderWaveform(Cairo.Context c) {
@@ -73,6 +159,13 @@ public class WaveformWidget : Gtk.DrawingArea {
 
         drawZeroLevelLine(c);
 
+        if (this.selection) {
+            c.rectangle(peakIndexToPixel(startingSample), 0, peakIndexToPixel(endingSample) - peakIndexToPixel(startingSample), this.get_allocated_height());
+            c.set_source_rgb(1.0, 1.0, 1.0);
+            c.set_operator(Cairo.Operator.DIFFERENCE);
+            c.fill();
+        }
+
         return false;
     }
 
@@ -95,6 +188,14 @@ public class WaveformWidget : Gtk.DrawingArea {
     private void setSizeRequest() {
         var newWidth = (int)(this.peaks.length / Math.pow(2, this.zoom));
         this.set_size_request(newWidth, -1);
+    }
+
+    private int pixelToPeakIndex(double px) {
+        return (int)Math.llrint(px * Math.pow(2, zoom));
+    }
+
+    private int peakIndexToPixel(double ind) {
+        return (int)Math.llrint(ind / Math.pow(2, zoom));
     }
 
 }
