@@ -23,6 +23,8 @@ public class WaveformWidget : Gtk.DrawingArea {
             this.setSizeRequest();
         }
     }
+    public int64 position {get; set; default = 0;}
+    public int positionDrawn {get; set;}
     public double zoom {get; set; default = 0;}
     private int samplesPerPixel {get; set; default = 80;}
     private GLib.Array<float?> peaks;
@@ -45,6 +47,16 @@ public class WaveformWidget : Gtk.DrawingArea {
         this.peaks = new GLib.Array<float?>();
         this.draw.connect(this.renderWaveform);
         this.notify["zoom"].connect(this.setSizeRequest);
+        this.notify["position"].connect(() => {
+            this.queue_draw_area(this.positionDrawn,
+                0,
+                1,
+                this.get_allocated_height());
+            this.queue_draw_area(songTimeToPixel(this.position),
+                0,
+                1,
+                this.get_allocated_height());
+        });
         this.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
             EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK |
             EventMask.POINTER_MOTION_HINT_MASK |
@@ -217,6 +229,8 @@ public class WaveformWidget : Gtk.DrawingArea {
 
         drawZeroLevelLine(c);
 
+        drawSongPosition(c);
+
         if (this.selection) {
             c.rectangle(peakIndexToPixel(startingSample), 0, peakIndexToPixel(endingSample) - peakIndexToPixel(startingSample), this.get_allocated_height());
             c.set_source_rgb(1.0, 1.0, 1.0);
@@ -225,6 +239,15 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
 
         return false;
+    }
+
+    private void drawSongPosition(Cairo.Context c) {
+        c.set_line_width(1.0);
+        c.set_source_rgb(0.0, 0.0, 0.0);
+        c.move_to(songTimeToPixel(position) + 0.5, 0);
+        c.line_to(songTimeToPixel(position) + 0.5, this.get_allocated_height());
+        c.stroke();
+        this.positionDrawn = songTimeToPixel(this.position);
     }
 
     private void drawBackground(Cairo.Context c, Gdk.Rectangle rect) {
@@ -254,6 +277,11 @@ public class WaveformWidget : Gtk.DrawingArea {
 
     private int peakIndexToPixel(double ind) {
         return (int)Math.llrint(ind / Math.pow(2, zoom));
+    }
+
+    private int songTimeToPixel(int64 pos) {
+        // why *2 works? TODO
+        return peakIndexToPixel(pos * 44.1 / this.samplesPerPixel * 2);
     }
 
 }

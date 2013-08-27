@@ -30,11 +30,9 @@ public class Chords : Gtk.Application {
     }
 
     public bool refreshUI() {
-        if (!am.updateRequired())
-            return true;
-
-        slider.set_range(0, (double)am.duration / Gst.SECOND);
-        slider.set_value((double)am.position / Gst.SECOND);
+        var newPos = am.position / Gst.MSECOND;
+        if (waveformArea.position != newPos)
+            waveformArea.position = newPos;
 
         return true;
     }
