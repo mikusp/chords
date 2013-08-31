@@ -37,9 +37,48 @@ public class AudioManager : GLib.Object {
         }
     }
 
-    public int speed {get; set; default = 100;}
+    private double _speed = 1.0;
+    public double speed {
+        get {
+            return _speed;
+        }
+        set {
+            var pos = this.position;
+            _speed = value;
+            if (this.speedActive) {
+                this.setPlaybackSpeed(this.speed);
+                this.position = pos;
+            }
+        }
+    }
 
-    public double pitch {get; set; default = 0;}
+    private bool _speedActive = false;
+    public bool speedActive {
+        get {
+            return _speedActive;
+        }
+        set {
+            var pos = this.position;
+            _speedActive = value;
+            if (value)
+                this.setPlaybackSpeed(this.speed);
+            else
+                this.setPlaybackSpeed(1.0);
+            this.position = pos;
+        }
+    }
+
+    private double _pitch = 0;
+    public double pitch {
+        get {
+            return _pitch;
+        }
+        set {
+            _pitch = value;
+            if (this.pitchActive)
+                this.setPitch(GLib.Math.pow(2, this.pitch / 12));
+        }
+    }
 
     private bool _pitchActive;
     public bool pitchActive {
@@ -47,25 +86,26 @@ public class AudioManager : GLib.Object {
             return _pitchActive;
         }
         set {
+            _pitchActive = value;
             if (value)
                 setPitch(GLib.Math.pow(2, pitch / 12));
             else
                 setPitch(1);
-
-            _pitchActive = value;
         }
     }
 
     private int64 songTime(int64 pipe_time) {
         double result = pipe_time;
-        result *= (double)this.speed / 100;
+        if (this.speedActive)
+            result *= this.speed;
 
         return Math.llrint(result);
     }
 
     private int64 pipeTime(int64 song_time) {
         double result = song_time;
-        result /= (double)this.speed / 100;
+        if (this.speedActive)
+            result /= this.speed;
 
         return Math.llrint(result);
     }
@@ -78,18 +118,7 @@ public class AudioManager : GLib.Object {
         pipeline.get_by_name("pitch").set("tempo", speed);
     }
 
-    private void speedChanged() {
-        setPlaybackSpeed((double)this.speed / 100);
-    }
-
     public AudioManager() {
-        this.notify["speed"].connect(this.speedChanged);
-
-        this.notify["pitch"].connect(() => {
-            if (pitchActive)
-                setPitch(GLib.Math.pow(2, pitch / 12));
-        });
-
         var bus = pipeline.get_bus();
         bus.add_signal_watch();
 

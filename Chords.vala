@@ -36,9 +36,7 @@ public class Chords : Gtk.Application {
     }
 
     public void speedChanged(Range range) {
-        var pos = am.position;
-        am.speed = (int)range.get_value();
-        am.position = pos;
+        am.speed = range.get_value() / 100.0;
     }
 
     public void connectSignals() {
@@ -73,6 +71,8 @@ public class Chords : Gtk.Application {
         (builder.get_object("pauseButton") as Button).clicked.connect(am.pause);
 
         (builder.get_object("stopButton") as Button).clicked.connect(am.stop);
+
+        (builder.get_object("speedButton") as ToggleButton).toggled.connect(this.speedToggled);
 
         var speedSlider = builder.get_object("speedSlider") as Scale;
         speedSlider.set_range(10, 100);
@@ -115,6 +115,10 @@ public class Chords : Gtk.Application {
 
     private void pitchToggled(ToggleButton tb) {
         am.pitchActive = tb.get_active();
+    }
+
+    private void speedToggled(ToggleButton tb) {
+        am.speedActive = tb.get_active();
     }
 
     public void openFile() {
