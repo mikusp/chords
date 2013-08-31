@@ -8,8 +8,6 @@ public class Chords : Gtk.Application {
     private Builder builder;
     private WaveformWidget waveformArea;
 
-    private Scale slider;
-
     public Chords() {
         GLib.Object(application_id: "com.mgw.chords",
             flags: GLib.ApplicationFlags.FLAGS_NONE);
@@ -38,11 +36,9 @@ public class Chords : Gtk.Application {
     }
 
     public void speedChanged(Range range) {
+        var pos = am.position;
         am.speed = (int)range.get_value();
-    }
-
-    public void speedToggled(ToggleButton tb) {
-        am.speedActive = tb.get_active();
+        am.position = pos;
     }
 
     public void connectSignals() {
@@ -72,15 +68,11 @@ public class Chords : Gtk.Application {
         zoomSlider.set_value(5);
         zoomSlider.set_inverted(true);
 
-        slider = builder.get_object("slider") as Scale;
-
         (builder.get_object("playButton") as Button).clicked.connect(am.play);
 
         (builder.get_object("pauseButton") as Button).clicked.connect(am.pause);
 
         (builder.get_object("stopButton") as Button).clicked.connect(am.stop);
-
-        (builder.get_object("slowToggleButton") as ToggleButton).toggled.connect(this.speedToggled);
 
         var speedSlider = builder.get_object("speedSlider") as Scale;
         speedSlider.set_range(10, 100);

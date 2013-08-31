@@ -18,10 +18,11 @@ public class AudioManager : GLib.Object {
         get {
             int64 val;
             pipeline.query_position(Format.TIME, out val);
-            return val;
+            return songTime(val);
         }
-        private set {
-            position = value;
+        set {
+            var pos = pipeTime(value);
+            pipeline.seek_simple(Format.TIME, SeekFlags.FLUSH, pos);
         }
     }
 
@@ -37,21 +38,6 @@ public class AudioManager : GLib.Object {
     }
 
     public int speed {get; set; default = 100;}
-
-    private bool _speedActive;
-    public bool speedActive {
-        get {
-            return _speedActive;
-        }
-        set {
-            if (value)
-                setPlaybackSpeed((double)speed / 100);
-            else
-                setPlaybackSpeed(1.0);
-
-            _speedActive = value;
-        }
-    }
 
     public double pitch {get; set; default = 0;}
 
@@ -70,6 +56,20 @@ public class AudioManager : GLib.Object {
         }
     }
 
+    private int64 songTime(int64 pipe_time) {
+        double result = pipe_time;
+        result *= (double)this.speed / 100;
+
+        return Math.llrint(result);
+    }
+
+    private int64 pipeTime(int64 song_time) {
+        double result = song_time;
+        result /= (double)this.speed / 100;
+
+        return Math.llrint(result);
+    }
+
     private void setPitch(double pitch) {
         pipeline.get_by_name("pitch").set("pitch", pitch);
     }
@@ -78,11 +78,12 @@ public class AudioManager : GLib.Object {
         pipeline.get_by_name("pitch").set("tempo", speed);
     }
 
+    private void speedChanged() {
+        setPlaybackSpeed((double)this.speed / 100);
+    }
+
     public AudioManager() {
-        this.notify["speed"].connect(() => {
-            if (speedActive)
-                setPlaybackSpeed((double)this.speed / 100);
-        });
+        this.notify["speed"].connect(this.speedChanged);
 
         this.notify["pitch"].connect(() => {
             if (pitchActive)
@@ -106,7 +107,7 @@ public class AudioManager : GLib.Object {
         conv.link_many(pitch, vol, sink, null);
     }
 
-    ~AudioProvider() {
+    ~AudioManager() {
         if (pipeline.current_state != Gst.State.NULL)
             pipeline.set_state(State.NULL);
     }

@@ -204,11 +204,10 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkToggleButton" id="slowToggleButton">
-                        <property name="label" translatable="yes">Slow</property>
+                      <object class="GtkLabel" id="speedLabel">
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Speed</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -495,20 +494,6 @@
             <property name="fill">True</property>
             <property name="pack_type">end</property>
             <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkScale" id="slider">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="round_digits">1</property>
-            <property name="draw_value">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="pack_type">end</property>
-            <property name="position">3</property>
           </packing>
         </child>
         <child>
