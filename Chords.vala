@@ -39,6 +39,10 @@ public class Chords : Gtk.Application {
         am.speed = range.get_value() / 100.0;
     }
 
+    private void scrollToggled(ToggleButton tb) {
+        waveformArea.scroll = tb.get_active();
+    }
+
     public void connectSignals() {
         (builder.get_object("closeMenuItem") as ImageMenuItem).
             activate.connect(Gtk.main_quit);
@@ -57,6 +61,8 @@ public class Chords : Gtk.Application {
         waveformArea = new WaveformWidget();
         (builder.get_object("viewport") as Gtk.Viewport).add(waveformArea);
         waveformArea.show();
+
+        (builder.get_object("scrollButton") as Gtk.ToggleButton).toggled.connect(this.scrollToggled);
 
         var zoomSlider = builder.get_object("zoomSlider") as Scale;
         zoomSlider.value_changed.connect(() => {

@@ -34,6 +34,7 @@ public class WaveformWidget : Gtk.DrawingArea {
     private double lastPointerPos {get; set;}
     private int startingSample {get; set;}
     private int endingSample {get; set;}
+    public bool scroll {get; set; default = true;}
 
     private enum State {
         NONE,
@@ -48,13 +49,14 @@ public class WaveformWidget : Gtk.DrawingArea {
         this.draw.connect(this.renderWaveform);
         this.notify["zoom"].connect(this.setSizeRequest);
         this.notify["position"].connect(() => {
-            this.queue_draw_area(this.positionDrawn,
+            // exact coordinates are just guesses
+            this.queue_draw_area(this.positionDrawn - 5,
                 0,
-                1,
+                10,
                 this.get_allocated_height());
-            this.queue_draw_area(songTimeToPixel(this.position),
+            this.queue_draw_area(songTimeToPixel(this.position) - 5,
                 0,
-                1,
+                10,
                 this.get_allocated_height());
         });
         this.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
@@ -228,8 +230,13 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
 
         drawZeroLevelLine(c);
-
         drawSongPosition(c);
+
+        var sw = this.get_parent().get_parent() as Gtk.ScrolledWindow;
+        var scroll = sw.get_hscrollbar() as Gtk.Range;
+        var scrollpos = Math.llrint(scroll.get_value());
+        if (this.scroll && this.positionDrawn - scrollpos >= 100)
+                scroll.set_value(this.positionDrawn - 100);
 
         if (this.selection) {
             c.rectangle(peakIndexToPixel(startingSample), 0, peakIndexToPixel(endingSample) - peakIndexToPixel(startingSample), this.get_allocated_height());

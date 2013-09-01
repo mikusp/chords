@@ -165,11 +165,12 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="scrollButton">
+                      <object class="GtkToggleButton" id="scrollButton">
                         <property name="label" translatable="yes">Scroll</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="active">True</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
