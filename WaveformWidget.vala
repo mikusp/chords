@@ -24,9 +24,9 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
     }
     public int64 position {get; set; default = 0;}
-    public int positionDrawn {get; set;}
+    private int positionDrawn {get; set;}
     public double zoom {get; set; default = 0;}
-    private int samplesPerPixel {get; set; default = 80;}
+    private const int samplesPerPixel = 80;
     private GLib.Array<float?> peaks;
     private State selectionState {get; set; default = State.NONE;}
     private bool selection {get; set; default = false;}
@@ -46,7 +46,6 @@ public class WaveformWidget : Gtk.DrawingArea {
 
     public WaveformWidget() {
         this.peaks = new GLib.Array<float?>();
-        this.draw.connect(this.renderWaveform);
         this.notify["zoom"].connect(this.setSizeRequest);
         this.notify["position"].connect(() => {
             // exact coordinates are just guesses
@@ -193,7 +192,7 @@ public class WaveformWidget : Gtk.DrawingArea {
             this.get_window().set_cursor(c);
     }
 
-    private bool renderWaveform(Cairo.Context c) {
+    public override bool draw(Cairo.Context c) {
         Gdk.Rectangle rect;
         var res = Gdk.cairo_get_clip_rectangle(c, out rect);
         // what if res == false? TODO
@@ -210,7 +209,7 @@ public class WaveformWidget : Gtk.DrawingArea {
         var verticalMiddle = maxPeakHeight;
 
         var peaksLength = peaks.length;
-        var expZoom = Math.pow(2, this.zoom);
+        var expZoom = Math.exp2(this.zoom);
 
         drawBackground(c, rect);
 
@@ -274,21 +273,21 @@ public class WaveformWidget : Gtk.DrawingArea {
     }
 
     private void setSizeRequest() {
-        var newWidth = (int)(this.peaks.length / Math.pow(2, this.zoom));
+        var newWidth = (int)(this.peaks.length / Math.exp2(this.zoom));
         this.set_size_request(newWidth, -1);
     }
 
     private int pixelToPeakIndex(double px) {
-        return (int)Math.llrint(px * Math.pow(2, zoom));
+        return (int)Math.llrint(px * Math.exp2(zoom));
     }
 
     private int peakIndexToPixel(double ind) {
-        return (int)Math.llrint(ind / Math.pow(2, zoom));
+        return (int)Math.llrint(ind / Math.exp2(zoom));
     }
 
     private int songTimeToPixel(int64 pos) {
         // why *2 works? TODO
-        return peakIndexToPixel(pos * 44.1 / this.samplesPerPixel * 2);
+        return peakIndexToPixel(pos * 44.1 / samplesPerPixel * 2);
     }
 
 }

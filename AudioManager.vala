@@ -8,10 +8,6 @@ public class AudioManager : GLib.Object {
             pipeline.query_duration(Format.TIME, out val);
             return val;
         }
-        private set {
-            duration = value;
-        }
-        default = CLOCK_TIME_NONE;
     }
 
     public int64 position {
@@ -76,7 +72,7 @@ public class AudioManager : GLib.Object {
         set {
             _pitch = value;
             if (this.pitchActive)
-                this.setPitch(GLib.Math.pow(2, this.pitch / 12));
+                this.setPitch(Math.exp2(this.pitch / 12));
         }
     }
 
@@ -88,7 +84,7 @@ public class AudioManager : GLib.Object {
         set {
             _pitchActive = value;
             if (value)
-                setPitch(GLib.Math.pow(2, pitch / 12));
+                setPitch(Math.exp2(pitch / 12));
             else
                 setPitch(1);
         }
@@ -151,10 +147,6 @@ public class AudioManager : GLib.Object {
 
     public void stop() {
         pipeline.set_state(State.READY);
-    }
-
-    public bool updateRequired() {
-        return pipeline.current_state >= State.PAUSED;
     }
 
     private void padAdded(Element decodebin, Pad pad) {
