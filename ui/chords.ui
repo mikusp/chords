@@ -139,7 +139,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkButton" id="loopABButton">
+                      <object class="GtkToggleButton" id="loopABButton">
                         <property name="label" translatable="yes">A-B</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -152,11 +152,12 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="loopButton">
+                      <object class="GtkToggleButton" id="loopButton">
                         <property name="label" translatable="yes">Loop</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="active">True</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>

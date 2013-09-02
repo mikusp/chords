@@ -36,6 +36,8 @@ public class WaveformWidget : Gtk.DrawingArea {
     private int endingSample {get; set;}
     public bool scroll {get; set; default = true;}
 
+    public signal void selectionEndReached(int64 startPosition);
+
     private enum State {
         NONE,
         SELECT,
@@ -57,6 +59,9 @@ public class WaveformWidget : Gtk.DrawingArea {
                 0,
                 10,
                 this.get_allocated_height());
+            if (this.position >= peakIndexToSongTime(this.endingSample) && this.selection) {
+                this.selectionEndReached(peakIndexToSongTime(this.startingSample));
+            }
         });
         this.add_events(EventMask.BUTTON_PRESS_MASK | EventMask.BUTTON_RELEASE_MASK |
             EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK |
@@ -275,6 +280,18 @@ public class WaveformWidget : Gtk.DrawingArea {
         this.set_size_request(newWidth, -1);
     }
 
+    public void scrollTo(int64 songPosition) {
+        var window = this.get_parent().get_parent() as Gtk.ScrolledWindow;
+        var scrollbar = window.get_hscrollbar() as Gtk.Range;
+
+        this.position = songPosition;
+
+        if (this.scroll) {
+            var val = songTimeToPixel(songPosition);
+            scrollbar.set_value(val - 100);
+        }
+    }
+
     private int pixelToPeakIndex(double px) {
         return (int)Math.llrint(px * Math.exp2(zoom));
     }
@@ -286,6 +303,14 @@ public class WaveformWidget : Gtk.DrawingArea {
     private int songTimeToPixel(int64 pos) {
         // why *2 works? TODO
         return peakIndexToPixel(pos * 44.1 / samplesPerPixel * 2);
+    }
+
+    private int pixelToSongTime(double px) {
+        return pixelToPeakIndex(px * (samplesPerPixel / (44.1 * 2)));
+    }
+
+    private int peakIndexToSongTime(int ind) {
+        return pixelToSongTime(peakIndexToPixel(ind));
     }
 
 }

@@ -43,6 +43,20 @@ public class Chords : Gtk.Application {
         waveformArea.scroll = tb.get_active();
     }
 
+    private void selectionEndHandler(int64 songPosition) {
+        if ((builder.get_object("loopABButton") as Gtk.ToggleButton).get_active()) {
+            am.position = songPosition * Gst.MSECOND;
+            waveformArea.scrollTo(songPosition);
+        }
+    }
+
+    private void eosHandler() {
+        if ((builder.get_object("loopButton") as Gtk.ToggleButton).get_active()) {
+            am.position = 0;
+            waveformArea.scrollTo(0);
+        }
+    }
+
     public void connectSignals() {
         (builder.get_object("closeMenuItem") as ImageMenuItem).
             activate.connect(Gtk.main_quit);
@@ -59,8 +73,11 @@ public class Chords : Gtk.Application {
         // has to be before zoomSlider.set_value
         // and not in a constructor - GTK is not yet inited there
         waveformArea = new WaveformWidget();
+        waveformArea.selectionEndReached.connect(this.selectionEndHandler);
         (builder.get_object("viewport") as Gtk.Viewport).add(waveformArea);
         waveformArea.show();
+
+        am.eos.connect(this.eosHandler);
 
         (builder.get_object("scrollButton") as Gtk.ToggleButton).toggled.connect(this.scrollToggled);
 

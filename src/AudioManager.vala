@@ -114,11 +114,16 @@ public class AudioManager : GLib.Object {
         pipeline.get_by_name("pitch").set("tempo", speed);
     }
 
+    public signal void eos();
+
     public AudioManager() {
         var bus = pipeline.get_bus();
         bus.add_signal_watch();
 
         bus.message["error"].connect(this.errorMessageHandler);
+        bus.message["eos"].connect(() => {
+            this.eos();
+        });
 
         var src = Gst.ElementFactory.make("filesrc", "source");
         var dec = Gst.ElementFactory.make("decodebin", "decoder");
