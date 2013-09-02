@@ -62,101 +62,99 @@ public class WaveformWidget : Gtk.DrawingArea {
             EventMask.BUTTON_MOTION_MASK | EventMask.EXPOSURE_MASK |
             EventMask.POINTER_MOTION_HINT_MASK |
             EventMask.POINTER_MOTION_MASK);
-        this.event.connect(this.eventHandler);
+        this.button_press_event.connect(this.buttonPressHandler);
+        this.button_release_event.connect(this.buttonReleaseHandler);
+        this.motion_notify_event.connect(this.motionNotifyHandler);
     }
 
-    private bool eventHandler(Gdk.Event e) {
-        switch (e.type) {
-        case Gdk.EventType.BUTTON_PRESS: {
-            var cursor = this.get_window().get_cursor();
-            if (cursor != null) {
-                if (cursor.cursor_type == Gdk.CursorType.SB_H_DOUBLE_ARROW)
-                    this.selectionState = State.MOVE;
-                else if (cursor.cursor_type == Gdk.CursorType.SB_LEFT_ARROW)
-                    this.selectionState = State.LEFT_EXPAND;
-                else if (cursor.cursor_type == Gdk.CursorType.SB_RIGHT_ARROW)
-                    this.selectionState = State.RIGHT_EXPAND;
+    private bool buttonPressHandler(Gdk.EventButton e) {
+        var cursor = this.get_window().get_cursor();
+        if (cursor != null) {
+            if (cursor.cursor_type == Gdk.CursorType.SB_H_DOUBLE_ARROW)
+                this.selectionState = State.MOVE;
+            else if (cursor.cursor_type == Gdk.CursorType.SB_LEFT_ARROW)
+                this.selectionState = State.LEFT_EXPAND;
+            else if (cursor.cursor_type == Gdk.CursorType.SB_RIGHT_ARROW)
+                this.selectionState = State.RIGHT_EXPAND;
+        }
+        else
+            this.selectionState = State.SELECT;
+
+        this.clickPosition = e.x;
+        return false;
+    }
+
+    private bool buttonReleaseHandler(Gdk.EventButton e) {
+        if (Math.fabs(e.x - this.clickPosition) <= 2) {
+            this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
+            this.selection = false;
+        }
+        this.selectionState = State.NONE;
+
+        return false;
+    }
+
+    private bool motionNotifyHandler(Gdk.EventMotion e) {
+        setDirectionalCursor(e.x);
+
+        var distance = Math.llrint(e.x - this.lastPointerPos);
+        var diff = pixelToPeakIndex(distance);
+
+        switch (this.selectionState) {
+        case State.MOVE: {
+            this.startingSample += diff;
+            this.endingSample += diff;
+            if (diff < 0) { // move left
+                this.invalidateBounds(this.startingSample, Math.fabs(diff));
+                this.invalidateBounds(this.endingSample, Math.fabs(diff));
             }
+            else {
+                this.invalidateBounds(this.startingSample - diff, diff);
+                this.invalidateBounds(this.endingSample - diff, diff);
+            }
+            break;
+        }
+        case State.LEFT_EXPAND: {
+            this.startingSample += diff;
+            if (diff < 0)
+                this.invalidateBounds(this.startingSample, Math.fabs(diff));
             else
-                this.selectionState = State.SELECT;
-
-            this.clickPosition = e.button.x;
+                this.invalidateBounds(this.startingSample - diff, diff);
             break;
         }
-        case Gdk.EventType.BUTTON_RELEASE: {
-            if (Math.fabs(e.button.x - this.clickPosition) <= 2) {
-                this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
-                this.selection = false;
-            }
-            this.selectionState = State.NONE;
+        case State.RIGHT_EXPAND: {
+            this.endingSample += diff;
+            if (diff < 0)
+                this.invalidateBounds(this.endingSample, Math.fabs(diff));
+            else
+                this.invalidateBounds(this.endingSample - diff, diff);
             break;
         }
-        case Gdk.EventType.MOTION_NOTIFY: {
-            setDirectionalCursor(e.motion.x);
+        case State.SELECT: {
+            if (Math.fabs(e.x - this.clickPosition) >= 5) {
+                this.selection = true;
 
-            var distance = Math.llrint(e.motion.x - this.lastPointerPos);
-            var diff = pixelToPeakIndex(distance);
-
-            switch (this.selectionState) {
-            case State.MOVE: {
-                this.startingSample += diff;
-                this.endingSample += diff;
-                if (diff < 0) { // move left
-                    this.invalidateBounds(this.startingSample, Math.fabs(diff));
-                    this.invalidateBounds(this.endingSample, Math.fabs(diff));
+                if (e.x > this.clickPosition) {
+                    this.startingSample = pixelToPeakIndex(this.clickPosition);
+                    this.endingSample = pixelToPeakIndex(e.x);
+                    this.selectionState = State.RIGHT_EXPAND;
                 }
                 else {
-                    this.invalidateBounds(this.startingSample - diff, diff);
-                    this.invalidateBounds(this.endingSample - diff, diff);
+                    this.startingSample = pixelToPeakIndex(e.x);
+                    this.endingSample = pixelToPeakIndex(this.clickPosition);
+                    this.selectionState = State.LEFT_EXPAND;
                 }
-                break;
-            }
-            case State.LEFT_EXPAND: {
-                this.startingSample += diff;
-                if (diff < 0)
-                    this.invalidateBounds(this.startingSample, Math.fabs(diff));
-                else
-                    this.invalidateBounds(this.startingSample - diff, diff);
-                break;
-            }
-            case State.RIGHT_EXPAND: {
-                this.endingSample += diff;
-                if (diff < 0)
-                    this.invalidateBounds(this.endingSample, Math.fabs(diff));
-                else
-                    this.invalidateBounds(this.endingSample - diff, diff);
-                break;
-            }
-            case State.SELECT: {
-                if (Math.fabs(e.motion.x - this.clickPosition) >= 5) {
-                    this.selection = true;
 
-                    if (e.motion.x > this.clickPosition) {
-                        this.startingSample = pixelToPeakIndex(this.clickPosition);
-                        this.endingSample = pixelToPeakIndex(e.motion.x);
-                        this.selectionState = State.RIGHT_EXPAND;
-                    }
-                    else {
-                        this.startingSample = pixelToPeakIndex(e.motion.x);
-                        this.endingSample = pixelToPeakIndex(this.clickPosition);
-                        this.selectionState = State.LEFT_EXPAND;
-                    }
-
-                    this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
-                }
-                break;
+                this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
             }
-            }
-
-            // TODO ensure that startingSample < endingSample
-            // particularly while expanding
-
-            this.lastPointerPos = e.motion.x;
             break;
         }
-        default:
-            break;
         }
+
+        // TODO ensure that startingSample < endingSample
+        // particularly while expanding
+
+        this.lastPointerPos = e.x;
 
         return false;
     }
@@ -235,7 +233,7 @@ public class WaveformWidget : Gtk.DrawingArea {
         var scroll = sw.get_hscrollbar() as Gtk.Range;
         var scrollpos = Math.llrint(scroll.get_value());
         if (this.scroll && this.positionDrawn - scrollpos >= 100)
-                scroll.set_value(this.positionDrawn - 100);
+            scroll.set_value(this.positionDrawn - 100);
 
         if (this.selection) {
             c.rectangle(peakIndexToPixel(startingSample), 0, peakIndexToPixel(endingSample) - peakIndexToPixel(startingSample), this.get_allocated_height());
