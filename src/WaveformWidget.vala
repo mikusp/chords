@@ -13,7 +13,6 @@ public class WaveformWidget : Gtk.DrawingArea {
     private int positionDrawn {get; set;}
     public double zoom {get; set; default = 0;}
     private State selectionState {get; set; default = State.NONE;}
-    private bool selection {get; set; default = false;}
     private double clickPosition {get; set; default = 0.0;}
     private double lastPointerPos {get; set;}
     private int startingSample {get; set;}
@@ -27,7 +26,8 @@ public class WaveformWidget : Gtk.DrawingArea {
         SELECT,
         MOVE,
         LEFT_EXPAND,
-        RIGHT_EXPAND
+        RIGHT_EXPAND,
+        SELECTED
     }
 
     public WaveformWidget() {
@@ -42,7 +42,8 @@ public class WaveformWidget : Gtk.DrawingArea {
                 0,
                 10,
                 this.get_allocated_height());
-            if (this.position >= UnitsConverter.peakIndexToSongTime(this.endingSample, this.zoom) && this.selection) {
+            if (this.position >= UnitsConverter.peakIndexToSongTime(this.endingSample, this.zoom)
+                && this.selectionState != State.NONE) {
                 this.selectionEndReached(UnitsConverter.peakIndexToSongTime(this.startingSample, this.zoom));
             }
         });
@@ -65,8 +66,12 @@ public class WaveformWidget : Gtk.DrawingArea {
             else if (cursor.cursor_type == Gdk.CursorType.SB_RIGHT_ARROW)
                 this.selectionState = State.RIGHT_EXPAND;
         }
-        else
+        else {
+            this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
+            this.startingSample = 0;
+            this.endingSample = 0;
             this.selectionState = State.SELECT;
+        }
 
         this.clickPosition = e.x;
         return false;
@@ -75,9 +80,9 @@ public class WaveformWidget : Gtk.DrawingArea {
     private bool buttonReleaseHandler(Gdk.EventButton e) {
         if (Math.fabs(e.x - this.clickPosition) <= 2) {
             this.invalidateBounds(this.startingSample, this.endingSample - this.startingSample);
-            this.selection = false;
+            this.selectionState = State.NONE;
         }
-        this.selectionState = State.NONE;
+        this.selectionState = State.SELECTED;
 
         return false;
     }
@@ -120,7 +125,7 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
         case State.SELECT: {
             if (Math.fabs(e.x - this.clickPosition) >= 5) {
-                this.selection = true;
+                this.selectionState = State.SELECTED;
 
                 if (e.x > this.clickPosition) {
                     this.startingSample = UnitsConverter.pixelToPeakIndex(this.clickPosition, this.zoom);
@@ -157,7 +162,7 @@ public class WaveformWidget : Gtk.DrawingArea {
     private void setDirectionalCursor(double x) {
         Cursor c = null;
 
-        if (this.selection || this.selectionState != State.NONE) {
+        if (this.selectionState != State.NONE) {
             if (Math.fabs(x - UnitsConverter.peakIndexToPixel(this.startingSample, this.zoom)) <= 8 ||
                 this.selectionState == State.LEFT_EXPAND) {
                 c = new Cursor.for_display(Gdk.Display.get_default(), Gdk.CursorType.SB_LEFT_ARROW);
@@ -194,7 +199,7 @@ public class WaveformWidget : Gtk.DrawingArea {
         if (this.scroll && this.positionDrawn - scrollpos >= 100)
             scroll.set_value(this.positionDrawn - 100);
 
-        if (this.selection) {
+        if (this.selectionState != State.NONE) {
             c.rectangle(UnitsConverter.peakIndexToPixel(startingSample, this.zoom), 0, UnitsConverter.peakIndexToPixel(endingSample, this.zoom) - UnitsConverter.peakIndexToPixel(startingSample, this.zoom), this.get_allocated_height());
             c.set_source_rgb(1.0, 1.0, 1.0);
             c.set_operator(Cairo.Operator.DIFFERENCE);
