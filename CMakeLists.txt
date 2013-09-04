@@ -28,12 +28,18 @@ vala_precompile(VALA_C
     src/Chords.vala
     src/FileSource.vala
     src/WaveformWidget.vala
+    src/Renderable.vala
+    src/UnitsConverter.vala
+    src/Waveform.vala
+    src/HelperFunctions.vala
 PACKAGES
     gtk+-3.0
     gstreamer-1.0
 CUSTOM_VAPIS
     vapi/gstreamer-app-1.0.vapi  # those are modified
     vapi/gstreamer-base-1.0.vapi
+OPTIONS
+    -g
 )
 
 add_executable(Chords ${VALA_C})
