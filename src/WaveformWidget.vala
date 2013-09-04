@@ -20,6 +20,7 @@ public class WaveformWidget : Gtk.DrawingArea {
     public bool scroll {get; set; default = true;}
 
     public signal void selectionEndReached(int64 startPosition);
+    public signal void seek(int64 msecs);
 
     private enum State {
         NONE,
@@ -71,9 +72,11 @@ public class WaveformWidget : Gtk.DrawingArea {
             this.startingSample = 0;
             this.endingSample = 0;
             this.selectionState = State.SELECT;
+            this.seek(UnitsConverter.pixelToSongTime(e.x, this.zoom));
         }
 
         this.clickPosition = e.x;
+        this.scroll = false;
         return false;
     }
 
@@ -193,11 +196,8 @@ public class WaveformWidget : Gtk.DrawingArea {
 
         drawSongPosition(c, rec);
 
-        var sw = this.get_parent().get_parent() as Gtk.ScrolledWindow;
-        var scroll = sw.get_hscrollbar() as Gtk.Range;
-        var scrollpos = Math.llrint(scroll.get_value());
-        if (this.scroll && this.positionDrawn - scrollpos >= 100)
-            scroll.set_value(this.positionDrawn - 100);
+        if (this.scroll)
+            this.centerPosition();
 
         if (this.selectionState != State.NONE) {
             c.rectangle(UnitsConverter.peakIndexToPixel(startingSample, this.zoom), 0, UnitsConverter.peakIndexToPixel(endingSample, this.zoom) - UnitsConverter.peakIndexToPixel(startingSample, this.zoom), this.get_allocated_height());
@@ -209,6 +209,12 @@ public class WaveformWidget : Gtk.DrawingArea {
         return false;
     }
 
+    private void centerPosition() {
+        var sw = this.get_parent().get_parent() as Gtk.ScrolledWindow;
+        var scroll = sw.get_hscrollbar() as Gtk.Range;
+        scroll.set_value(this.positionDrawn - sw.get_allocated_width() / 2.0);
+    }
+
     private void drawSongPosition(Cairo.Context c, Gdk.Rectangle rec) {
         c.set_line_width(1.0);
         c.set_source_rgb(0.0, 0.0, 0.0);
@@ -216,23 +222,21 @@ public class WaveformWidget : Gtk.DrawingArea {
         c.line_to(UnitsConverter.songTimeToPixel(position, this.zoom) + 0.5, rec.height);
         c.stroke();
         this.positionDrawn = UnitsConverter.songTimeToPixel(this.position, this.zoom);
+        if (!this.scroll) {
+            var sw = this.get_parent().get_parent() as Gtk.ScrolledWindow;
+            var scroll = sw.get_hscrollbar() as Gtk.Range;
+            var visibleCenter = scroll.get_value() + sw.get_allocated_width() / 2.0;
+            var positionLimit = scroll.get_value() + sw.get_allocated_width() * 0.9;
+
+            if (this.positionDrawn == visibleCenter ||
+                this.positionDrawn >= positionLimit)
+                this.scroll = true;
+        }
     }
 
     private void setSizeRequest() {
         var newWidth = wf.get_width_request(this.zoom);
         this.set_size_request(newWidth, -1);
-    }
-
-    public void scrollTo(int64 songPosition) {
-        var window = this.get_parent().get_parent() as Gtk.ScrolledWindow;
-        var scrollbar = window.get_hscrollbar() as Gtk.Range;
-
-        this.position = songPosition;
-
-        if (this.scroll) {
-            var val = UnitsConverter.songTimeToPixel(songPosition, this.zoom);
-            scrollbar.set_value(val - 100);
-        }
     }
 
 }

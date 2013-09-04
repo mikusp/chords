@@ -46,14 +46,12 @@ public class Chords : Gtk.Application {
     private void selectionEndHandler(int64 songPosition) {
         if ((builder.get_object("loopABButton") as Gtk.ToggleButton).get_active()) {
             am.position = songPosition * Gst.MSECOND;
-            waveformArea.scrollTo(songPosition);
         }
     }
 
     private void eosHandler() {
         if ((builder.get_object("loopButton") as Gtk.ToggleButton).get_active()) {
             am.position = 0;
-            waveformArea.scrollTo(0);
         }
     }
 
@@ -74,6 +72,9 @@ public class Chords : Gtk.Application {
         // and not in a constructor - GTK is not yet inited there
         waveformArea = new WaveformWidget();
         waveformArea.selectionEndReached.connect(this.selectionEndHandler);
+        waveformArea.seek.connect((msecs) => {
+            Timeout.add(100, () => {am.position = msecs * Gst.MSECOND; return false;});
+        });
         (builder.get_object("viewport") as Gtk.Viewport).add(waveformArea);
         waveformArea.show();
 
