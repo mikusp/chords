@@ -78,6 +78,15 @@ public class Chords : Gtk.Application {
         (builder.get_object("viewport") as Gtk.Viewport).add(waveformArea);
         waveformArea.show();
 
+        (builder.get_object("sectionMarker") as Gtk.MenuItem).activate.
+            connect(waveformArea.addSectionMarker);
+
+        (builder.get_object("beatMarker") as Gtk.MenuItem).activate.
+            connect(waveformArea.addBeatMarker);
+
+        (builder.get_object("measureMarker") as Gtk.MenuItem).activate.
+            connect(waveformArea.addMeasureMarker);
+
         am.eos.connect(this.eosHandler);
 
         (builder.get_object("scrollButton") as Gtk.ToggleButton).toggled.connect(this.scrollToggled);

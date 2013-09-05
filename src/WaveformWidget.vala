@@ -17,7 +17,9 @@ public class WaveformWidget : Gtk.DrawingArea {
     private double lastPointerPos {get; set;}
     private int startingSample {get; set;}
     private int endingSample {get; set;}
+    private Gee.TreeSet<Marker> markers = new Gee.TreeSet<Marker>();
     public bool scroll {get; set; default = true;}
+    private const int RULER_HEIGHT = 30;
 
     public signal void selectionEndReached(int64 startPosition);
     public signal void seek(int64 msecs);
@@ -36,11 +38,11 @@ public class WaveformWidget : Gtk.DrawingArea {
         this.notify["position"].connect(() => {
             // exact coordinates are just guesses
             this.queue_draw_area(this.positionDrawn - 5,
-                0,
+                RULER_HEIGHT,
                 10,
                 this.get_allocated_height());
             this.queue_draw_area(UnitsConverter.songTimeToPixel(this.position, this.zoom) - 5,
-                0,
+                RULER_HEIGHT,
                 10,
                 this.get_allocated_height());
             if (this.position >= UnitsConverter.peakIndexToSongTime(this.endingSample, this.zoom)
@@ -157,7 +159,7 @@ public class WaveformWidget : Gtk.DrawingArea {
 
     private void invalidateBounds(int leftBound, double width) {
         this.queue_draw_area(UnitsConverter.peakIndexToPixel(leftBound, this.zoom),
-            0,
+            RULER_HEIGHT
             UnitsConverter.peakIndexToPixel(width, this.zoom),
             this.get_allocated_height());
     }
@@ -187,10 +189,22 @@ public class WaveformWidget : Gtk.DrawingArea {
     }
 
     public override bool draw(Cairo.Context c) {
-        c.rectangle(0, 30, this.get_allocated_width(), this.get_allocated_height());
+        c.save();
+        c.rectangle(0, 0, this.get_allocated_width(), RULER_HEIGHT);
         c.clip();
-        c.translate(0, 30);
+
         var rec = get_clip_rectangle(c);
+        drawRulerBackground(c, rec);
+        markers.foreach((m) => {
+            m.render(c, this.zoom);
+            return true;
+        });
+
+        c.restore();
+        c.rectangle(0, RULER_HEIGHT, this.get_allocated_width(), this.get_allocated_height());
+        c.clip();
+        c.translate(0, RULER_HEIGHT);
+        rec = get_clip_rectangle(c);
 
         wf.render(c, this.zoom);
 
@@ -207,6 +221,12 @@ public class WaveformWidget : Gtk.DrawingArea {
         }
 
         return false;
+    }
+
+    private void drawRulerBackground(Cairo.Context c, Gdk.Rectangle rec) {
+        c.rectangle(rec.x, rec.y, rec.width, rec.height);
+        c.set_source_rgb(0.8, 0.8, 0.8);
+        c.fill();
     }
 
     private void centerPosition() {
@@ -237,6 +257,28 @@ public class WaveformWidget : Gtk.DrawingArea {
     private void setSizeRequest() {
         var newWidth = wf.get_width_request(this.zoom);
         this.set_size_request(newWidth, -1);
+    }
+
+    private void invalidateMarker() {
+        this.queue_draw_area(UnitsConverter.songTimeToPixel(this.position, this.zoom) - 20,
+            0,
+            40,
+            RULER_HEIGHT);
+    }
+
+    public void addBeatMarker() {
+        markers.add(new BeatMarker(this.position));
+        this.invalidateMarker();
+    }
+
+    public void addMeasureMarker() {
+        markers.add(new MeasureMarker(this.position));
+        this.invalidateMarker();
+    }
+
+    public void addSectionMarker() {
+        markers.add(new SectionMarker(this.position));
+        this.invalidateMarker();
     }
 
 }

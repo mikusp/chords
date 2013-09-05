@@ -16,7 +16,8 @@ pkg_check_modules(LIBS REQUIRED
     gtk+-3.0
     gstreamer-1.0
     gstreamer-app-1.0
-    gstreamer-base-1.0)
+    gstreamer-base-1.0
+    gee-0.8)
 add_definitions(${LIBS_CFLAGS} ${LIBS_CFLAGS_OTHER})
 link_libraries(${LIBS_LIBRARIES})
 link_directories(${LIBS_LIBRARY_DIRS})
@@ -32,9 +33,14 @@ vala_precompile(VALA_C
     src/UnitsConverter.vala
     src/Waveform.vala
     src/HelperFunctions.vala
+    src/Marker.vala
+    src/BeatMarker.vala
+    src/MeasureMarker.vala
+    src/SectionMarker.vala
 PACKAGES
     gtk+-3.0
     gstreamer-1.0
+    gee-0.8
 CUSTOM_VAPIS
     vapi/gstreamer-app-1.0.vapi  # those are modified
     vapi/gstreamer-base-1.0.vapi
