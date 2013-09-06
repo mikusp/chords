@@ -63,10 +63,12 @@ public class FileSource : GLib.Object {
         var data = this.adapter.take(length);
         var br = new Gst.Base.ByteReader(data);
 
-        for (int i = 0; i < length / 4; ++i) {
+        for (int i = 0; i < length / 8; ++i) {
             float temp;
             br.get_float32_le(out temp);
-            result[i%2, i] = temp;
+            result[0, i] = temp;
+            br.get_float32_le(out temp);
+            result[1, i] = temp;
         }
 
         return result;

@@ -159,7 +159,7 @@ public class WaveformWidget : Gtk.DrawingArea {
 
     private void invalidateBounds(int leftBound, double width) {
         this.queue_draw_area(UnitsConverter.peakIndexToPixel(leftBound, this.zoom),
-            RULER_HEIGHT
+            RULER_HEIGHT,
             UnitsConverter.peakIndexToPixel(width, this.zoom),
             this.get_allocated_height());
     }

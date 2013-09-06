@@ -10,12 +10,11 @@ public class UnitsConverter {
     }
 
     public static int songTimeToPixel(int64 pos, double zoom) {
-        // why *2 works? TODO
-        return peakIndexToPixel(pos * 44.1 / samplesPerPixel * 2, zoom);
+        return peakIndexToPixel(pos * 44.1 / samplesPerPixel, zoom);
     }
 
     public static int pixelToSongTime(double px, double zoom) {
-        return pixelToPeakIndex(px * (samplesPerPixel / (44.1 * 2)), zoom);
+        return pixelToPeakIndex(px * (samplesPerPixel / (44.1)), zoom);
     }
 
     public static int peakIndexToSongTime(int ind, double zoom) {

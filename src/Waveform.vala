@@ -56,6 +56,6 @@ public class Waveform : Object, Renderable {
     }
 
     public int get_width_request(double zoom) {
-        return UnitsConverter.peakIndexToPixel(this.audioData.length, zoom);
+        return UnitsConverter.peakIndexToPixel(this.audioData.length / 2.0, zoom);
     }
 }
