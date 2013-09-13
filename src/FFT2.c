@@ -2,8 +2,8 @@
 #include <math.h>
 #include <complex.h>
 #include <glib.h>
+#include <cs.h>
 
-#include <cblas.h>
 #include <fftw3.h>
 
 void cq_dump_vector(double* mem, int length) {
@@ -85,7 +85,7 @@ void cq_swap_matrix_column(double _Complex* matrix, int height, int width,
     }
 }
 
-fftw_complex* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
+cs_ci* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
         int bins, int* height, int* width) {
     double Q = cq_q(bins);
     int K = cq_k(min_freq, max_freq, bins);
@@ -93,7 +93,7 @@ fftw_complex* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
 
     fftw_complex* temp = fftw_alloc_complex(fft);
     fftw_complex* spec = fftw_alloc_complex(fft);
-    fftw_complex* result = fftw_alloc_complex(fft * K);
+    cs_ci* result = cs_ci_spalloc(fft, K, (int)(fft*K*0.01), 1, 1);
     fftw_plan plan = fftw_plan_dft_1d(fft, temp, spec, FFTW_FORWARD,
             FFTW_ESTIMATE);
 
@@ -110,7 +110,12 @@ fftw_complex* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
         fftw_execute(plan);
 
         cq_zero_vector_below_thresh(spec, fft, 0.0054);
-        cq_swap_matrix_column(result, fft, K, spec, j);
+
+        for (int k = 0; k < fft; ++k) {
+            fftw_complex temp = spec[k];
+            if (cabs(temp) > 0.0001)
+                cs_ci_entry(result, k, j, conj(temp) / (double)fft);
+        }
 
         fftw_free(h);
         fftw_free(vec);
@@ -120,16 +125,14 @@ fftw_complex* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
     fftw_free(temp);
     fftw_free(spec);
 
-    for (int j = 0; j < fft * K; ++j) {
-        result[j] = conj(result[j]) / (double)fft;
-    }
-
+    cs_ci* ret = cs_ci_compress(result);
+    cs_ci_spfree(result);
     *height = fft;
     *width = K;
-    return result;
+    return ret;
 }
 
-fftw_complex* cq_const_q_transform(double* data, fftw_complex* kernel,
+fftw_complex* cq_const_q_transform(double* data, cs_ci* kernel,
         int height, int width) {
     fftw_complex* fft = fftw_alloc_complex(height);
     fftw_plan plan = fftw_plan_dft_r2c_1d(height, data, fft, FFTW_ESTIMATE |
@@ -143,17 +146,12 @@ fftw_complex* cq_const_q_transform(double* data, fftw_complex* kernel,
 
     fftw_complex* result = fftw_alloc_complex(width);
 
-    double _Complex one = 1.0;
-    double _Complex zero = 0.0;
-    cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-        1, width, height,
-        &one,
-        fft, height,
-        kernel, width,
-        &zero,
-        result, width);
+    for (int j = 0; j < width; ++j) {
+        result[j] = 0;
+    }
 
-    fftw_free(fft);
+    cs_ci_gaxpy(kernel, fft, result);
+
     fftw_destroy_plan(plan);
 
     return result;
@@ -163,8 +161,9 @@ fftw_complex* cq_short_time_constq_transform(double* data, int data_length,
         int min_freq, int max_freq, int sample_rate, int bins, int step,
         int* height,  int* width) {
     int kernel_height, kernel_width;
-    fftw_complex* kern = cq_make_kernel(min_freq, max_freq, sample_rate, bins,
+    cs_ci* ker = cq_make_kernel(min_freq, max_freq, sample_rate, bins,
         &kernel_height, &kernel_width);
+    cs_ci* kern = cs_ci_transpose(ker, 1);
 
     int max_index = rint(ceil(data_length / kernel_height));
 
@@ -183,7 +182,8 @@ fftw_complex* cq_short_time_constq_transform(double* data, int data_length,
         fftw_free(cq);
     }
 
-    fftw_free(kern);
+    cs_ci_spfree(ker);
+    cs_ci_spfree(kern);
     free(indices);
 
     *height = kernel_width;
