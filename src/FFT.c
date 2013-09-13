@@ -1,24 +1,23 @@
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
-#include <glib.h>
-#include <cs.h>
 
+#include <cs.h>
 #include <fftw3.h>
 
-void cq_dump_vector(double* mem, int length) {
+void cq_dump_vector(const double* vec, int length) {
     for (int j = 0; j < length; ++j) {
-        printf("%.7lf\n", mem[j]);
+        printf("%.7lf\n", vec[j]);
     }
 }
 
-void cq_dump_vector_complex(double _Complex* mem, int length) {
+void cq_dump_vector_complex(const double _Complex* vec, int length) {
     for (int j = 0; j < length; ++j) {
-        printf("%.7lf + %.7lfi\n", creal(mem[j]), cimag(mem[j]));
+        printf("%.7lf + %.7lfi\n", creal(vec[j]), cimag(vec[j]));
     }
 }
 
-void cq_dump_matrix_abs(double _Complex* matrix, int height, int width) {
+void cq_dump_matrix_abs(const double _Complex* matrix, int height, int width) {
     for (int j = 0; j < height; ++j) {
         for (int k = 0; k < width; ++k)
             printf("%.7lf ", cabs(matrix[j * width + k]));
@@ -49,8 +48,8 @@ fftw_complex* cq_temp_kernel(double Q, int length) {
     return result;
 }
 
-void cq_multiply_vector_elem(double* in, fftw_complex* in2, fftw_complex* out,
-        int length) {
+void cq_multiply_vector_elem(const double* in, const fftw_complex* in2,
+        fftw_complex* out, int length) {
     for (int j = 0; j < length; ++j) {
         fftw_complex elem = in[j] * in2[j];
         out[j] = elem;
@@ -69,17 +68,17 @@ int cq_fft_len(double q, int min_freq, int sample_rate) {
     return rint(exp2(ceil(log2(q * sample_rate / (double) min_freq))));
 }
 
-void cq_zero_vector_below_thresh(double _Complex* matrix, int length,
+void cq_zero_vector_below_thresh(double _Complex* vec, int length,
         double thresh) {
     fftw_complex zero = 0.0 + 0.0*_Complex_I;
     for (int j = 0; j < length; ++j) {
-        if (cabs(matrix[j]) <= thresh)
-            matrix[j] = zero;
+        if (cabs(vec[j]) <= thresh)
+            vec[j] = zero;
     }
 }
 
 void cq_swap_matrix_column(double _Complex* matrix, int height, int width,
-        double _Complex* vector, int index) {
+        const double _Complex* vector, int index) {
     for (int j = 0; j < height; ++j) {
         matrix[j * width + index] = vector[j];
     }
@@ -132,13 +131,13 @@ cs_ci* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
     return ret;
 }
 
-fftw_complex* cq_const_q_transform(double* data, cs_ci* kernel,
-        int height, int width, fftw_plan plan, fftw_complex* fft) {
-    fftw_execute_dft_r2c(plan, data, fft);
+fftw_complex* cq_const_q_transform(double* data, const cs_ci* kernel,
+        int height, int width, const fftw_plan plan, fftw_complex* buffer) {
+    fftw_execute_dft_r2c(plan, data, buffer);
 
     // fill redundant data
     for (int j = 0; j < height / 2 - 1; ++j) {
-        fft[height - j - 1] = conj(fft[j + 1]);
+        buffer[height - j - 1] = conj(buffer[j + 1]);
     }
 
     fftw_complex* result = fftw_alloc_complex(width);
@@ -147,13 +146,13 @@ fftw_complex* cq_const_q_transform(double* data, cs_ci* kernel,
         result[j] = 0;
     }
 
-    cs_ci_gaxpy(kernel, fft, result);
+    cs_ci_gaxpy(kernel, buffer, result);
 
     return result;
 }
 
-fftw_complex* cq_const_q_wrap(double* data, cs_ci* kernel, int height,
-        int width, int* indices, int indices_size) {
+fftw_complex* cq_const_q_wrap(double* data, const cs_ci* kernel, int height,
+        int width, const int* indices, int indices_size) {
     fftw_complex* temp_fft = fftw_alloc_complex(height);
     fftw_plan plan = fftw_plan_dft_r2c_1d(height, data, temp_fft, FFTW_ESTIMATE |
             FFTW_PRESERVE_INPUT);
@@ -200,27 +199,3 @@ fftw_complex* cq_short_time_constq_transform(double* data, int data_length,
     return result;
 }
 
-int main() {
-    FILE* f = fopen("ppp", "r");
-    double* data = fftw_alloc_real(524288);
-    double num;
-
-    int i = 0;
-    while(fscanf(f, "%lf\n", &num) > 0)
-        data[i++] = num;
-
-    int height, width;
-    GTimer* gt = g_timer_new();
-    fftw_complex* cq = cq_short_time_constq_transform(data, 524288,
-            55, 440, 44100, 12, 2048, &height, &width);
-    double elapsed = g_timer_elapsed(gt, NULL);
-
-    printf("%.8lf\n", elapsed);
-
-    g_timer_destroy(gt);
-    fftw_free(cq);
-    fftw_free(data);
-    fclose(f);
-
-    return 0;
-}
