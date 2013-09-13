@@ -133,11 +133,8 @@ cs_ci* cq_make_kernel(int min_freq, int max_freq, int sample_rate,
 }
 
 fftw_complex* cq_const_q_transform(double* data, cs_ci* kernel,
-        int height, int width) {
-    fftw_complex* fft = fftw_alloc_complex(height);
-    fftw_plan plan = fftw_plan_dft_r2c_1d(height, data, fft, FFTW_ESTIMATE |
-            FFTW_PRESERVE_INPUT);
-    fftw_execute(plan);
+        int height, int width, fftw_plan plan, fftw_complex* fft) {
+    fftw_execute_dft_r2c(plan, data, fft);
 
     // fill redundant data
     for (int j = 0; j < height / 2 - 1; ++j) {
@@ -152,8 +149,27 @@ fftw_complex* cq_const_q_transform(double* data, cs_ci* kernel,
 
     cs_ci_gaxpy(kernel, fft, result);
 
-    fftw_destroy_plan(plan);
+    return result;
+}
 
+fftw_complex* cq_const_q_wrap(double* data, cs_ci* kernel, int height,
+        int width, int* indices, int indices_size) {
+    fftw_complex* temp_fft = fftw_alloc_complex(height);
+    fftw_plan plan = fftw_plan_dft_r2c_1d(height, data, temp_fft, FFTW_ESTIMATE |
+            FFTW_PRESERVE_INPUT);
+
+    fftw_complex* result = fftw_alloc_complex(height * indices_size);
+
+    for (int j = 0; j < indices_size; ++j) {
+        fftw_complex* cq = cq_const_q_transform(data + indices[j], kernel,
+            height, width, plan, temp_fft);
+
+        cq_swap_matrix_column(result, width, indices_size, cq, j);
+        fftw_free(cq);
+    }
+
+    fftw_free(temp_fft);
+    fftw_destroy_plan(plan);
     return result;
 }
 
@@ -172,15 +188,8 @@ fftw_complex* cq_short_time_constq_transform(double* data, int data_length,
     for (int j = 0, k = 0; j <= (max_index - 1) * kernel_height; ++k, j += step)
         indices[k] = j;
 
-    fftw_complex* result = fftw_alloc_complex(kernel_width * indices_size);
-
-    for (int j = 0; j < indices_size; ++j) {
-        fftw_complex* cq = cq_const_q_transform(data + indices[j], kern,
-                kernel_height, kernel_width);
-
-        cq_swap_matrix_column(result, kernel_width, indices_size, cq, j);
-        fftw_free(cq);
-    }
+    fftw_complex* result = cq_const_q_wrap(data, kern, kernel_height,
+            kernel_width, indices, indices_size);
 
     cs_ci_spfree(ker);
     cs_ci_spfree(kern);
