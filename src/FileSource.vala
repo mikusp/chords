@@ -60,8 +60,10 @@ public class FileSource : GLib.Object {
     public float[,] get_f32_le() {
         var length = this.adapter.available();
         float[,] result = new float[2,length / 4];
-        var data = this.adapter.take(length);
-        var br = new Gst.Base.ByteReader(data);
+        uint8[] temp_buffer = new uint8[length];
+        // that's probably very inefficient TODO
+        this.adapter.copy(temp_buffer, 0, length);
+        var br = new Gst.Base.ByteReader(temp_buffer);
 
         for (int i = 0; i < length / 8; ++i) {
             float temp;

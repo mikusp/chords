@@ -17,11 +17,13 @@ pkg_check_modules(LIBS REQUIRED
     gstreamer-1.0
     gstreamer-app-1.0
     gstreamer-base-1.0
-    gee-0.8)
+    gee-0.8
+    fftw3f)
 add_definitions(${LIBS_CFLAGS} ${LIBS_CFLAGS_OTHER})
 link_libraries(${LIBS_LIBRARIES})
 link_directories(${LIBS_LIBRARY_DIRS})
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 --std=gnu99")
 
 
 vala_precompile(VALA_C
@@ -37,6 +39,7 @@ vala_precompile(VALA_C
     src/BeatMarker.vala
     src/MeasureMarker.vala
     src/SectionMarker.vala
+    src/FreqVisualizer.vala
 PACKAGES
     gtk+-3.0
     gstreamer-1.0
@@ -44,11 +47,13 @@ PACKAGES
 CUSTOM_VAPIS
     vapi/gstreamer-app-1.0.vapi  # those are modified
     vapi/gstreamer-base-1.0.vapi
+    vapi/FFT.vapi
 OPTIONS
     -g
 )
 
-add_executable(Chords ${VALA_C})
+add_executable(Chords ${VALA_C} src/FFT.c)
+target_link_libraries(Chords libcxsparse.a)
 
 add_custom_command(TARGET Chords PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

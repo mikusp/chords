@@ -6,6 +6,7 @@ public class WaveformWidget : Gtk.DrawingArea {
         set {
             this.wf.setAudioData(value);
             this.setSizeRequest();
+            this.queue_draw();
         }
     }
     private Waveform wf {get; set; default = new Waveform();}

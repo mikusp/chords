@@ -15,11 +15,11 @@ namespace Gst {
 			[CCode (cname = "gst_adapter_clear")]
 			public void clear ();
 			[CCode (cname = "gst_adapter_copy")]
-			public void copy ([CCode (array_length_cname = "size", array_length_pos = 2.1, array_length_type = "gsize")] out unowned uint8[] dest, size_t offset);
+			public void copy ([CCode (array_length = "false")] uint8[] dest, size_t offset, size_t nbytes);
 			[CCode (cname = "gst_adapter_flush")]
 			public void flush (size_t flush);
-			[CCode (array_length_pos = 0.1, array_length_type = "gsize", cname = "gst_adapter_map")]
-			public unowned uint8[] map ();
+			[CCode (array_length = "false", cname = "gst_adapter_map")]
+			public unowned uint8[] map (size_t nbytes);
 			[CCode (cname = "gst_adapter_masked_scan_uint32")]
 			public size_t masked_scan_uint32 (uint32 mask, uint32 pattern, size_t offset, size_t size);
 			[CCode (cname = "gst_adapter_masked_scan_uint32_peek")]
